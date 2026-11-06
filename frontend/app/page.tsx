@@ -70,7 +70,7 @@ export default function HomePage() {
       <section className="hero section-wrap" id="top" aria-labelledby="hero-title">
         <div className="hero-copy">
           <p className="eyebrow"><span className="status-dot" /> Independent developer · Romania</p>
-          <h1 id="hero-title">
+          <h1 id="hero-title" tabIndex={-1}>
             MAKE IT
             <br />
             <span>MEAN</span>
