@@ -3,25 +3,25 @@
 import { ArrowDownRight, ArrowUpRight, MousePointer2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-const INTRO_DURATION = 7600;
-const EXIT_DURATION = 750;
+const INTRO_DURATION = 8600;
+const EXIT_DURATION = 700;
 
 const agents = [
-  { name: "design", color: "#f15a35", startX: "12vw", startY: "42vh", endX: "34vw", endY: "34vh", delay: "0ms" },
-  { name: "layout", color: "#55a8ff", startX: "82vw", startY: "20vh", endX: "67vw", endY: "31vh", delay: "250ms" },
-  { name: "type", color: "#ab83ff", startX: "21vw", startY: "76vh", endX: "45vw", endY: "41vh", delay: "510ms" },
-  { name: "motion", color: "#42d5a1", startX: "88vw", startY: "67vh", endX: "74vw", endY: "51vh", delay: "180ms" },
-  { name: "studio", color: "#ffd166", startX: "57vw", startY: "16vh", endX: "55vw", endY: "57vh", delay: "730ms" },
-  { name: "build", color: "#63d8df", startX: "8vw", startY: "27vh", endX: "43vw", endY: "53vh", delay: "390ms" },
-  { name: "detail", color: "#f185bc", startX: "71vw", startY: "81vh", endX: "61vw", endY: "44vh", delay: "620ms" },
+  { name: "design", color: "#f15a35", startX: "12vw", startY: "42vh", endX: "31vw", endY: "37vh", delay: "0ms" },
+  { name: "layout", color: "#55a8ff", startX: "82vw", startY: "20vh", endX: "69vw", endY: "31vh", delay: "250ms" },
+  { name: "type", color: "#ab83ff", startX: "21vw", startY: "76vh", endX: "48vw", endY: "43vh", delay: "510ms" },
+  { name: "motion", color: "#42d5a1", startX: "88vw", startY: "67vh", endX: "76vw", endY: "53vh", delay: "180ms" },
+  { name: "studio", color: "#ffd166", startX: "57vw", startY: "16vh", endX: "59vw", endY: "58vh", delay: "730ms" },
+  { name: "build", color: "#63d8df", startX: "8vw", startY: "27vh", endX: "39vw", endY: "56vh", delay: "390ms" },
+  { name: "detail", color: "#f185bc", startX: "71vw", startY: "81vh", endX: "62vw", endY: "45vh", delay: "620ms" },
 ];
 
-const steps = [
+const stages = [
   { time: 500, label: "Mapping the canvas" },
-  { time: 1900, label: "Building the hero" },
-  { time: 3500, label: "Putting ideas in place" },
-  { time: 5200, label: "Polishing the details" },
-  { time: 7000, label: "Ready when you are" },
+  { time: 2100, label: "Building the hero" },
+  { time: 3900, label: "Setting the type" },
+  { time: 5700, label: "Adding the details" },
+  { time: 7900, label: "Ready when you are" },
 ];
 
 type AgentStyle = React.CSSProperties & {
@@ -36,17 +36,16 @@ type AgentStyle = React.CSSProperties & {
 export default function AgenticIntro({ children }: Readonly<{ children: React.ReactNode }>) {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isLeaving, setIsLeaving] = useState(false);
-  const [stage, setStage] = useState(steps[0].label);
+  const [stage, setStage] = useState(stages[0].label);
   const [runId, setRunId] = useState(0);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const skipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    let timers: ReturnType<typeof setTimeout>[] = [];
-
     const clearTimers = () => {
-      timers.forEach(clearTimeout);
-      timers = [];
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
     };
 
     const startIntro = () => {
@@ -55,22 +54,22 @@ export default function AgenticIntro({ children }: Readonly<{ children: React.Re
       setRunId((current) => current + 1);
       setIsPlaying(true);
       setIsLeaving(false);
-      setStage(steps[0].label);
+      setStage(stages[0].label);
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
 
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const duration = reducedMotion ? 1400 : INTRO_DURATION;
+      const duration = reducedMotion ? 1500 : INTRO_DURATION;
 
       if (reducedMotion) {
-        timers.push(setTimeout(() => setStage(steps[steps.length - 1].label), duration * 0.7));
+        timers.current.push(setTimeout(() => setStage(stages[stages.length - 1].label), 700));
       } else {
-        for (const step of steps.slice(1)) {
-          timers.push(setTimeout(() => setStage(step.label), step.time));
+        for (const step of stages.slice(1)) {
+          timers.current.push(setTimeout(() => setStage(step.label), step.time));
         }
       }
 
-      timers.push(setTimeout(() => setIsLeaving(true), duration));
-      timers.push(setTimeout(() => setIsPlaying(false), duration + EXIT_DURATION));
+      timers.current.push(setTimeout(() => setIsLeaving(true), duration));
+      timers.current.push(setTimeout(() => setIsPlaying(false), duration + EXIT_DURATION));
     };
 
     const handlePageShow = (event: PageTransitionEvent) => {
@@ -110,7 +109,7 @@ export default function AgenticIntro({ children }: Readonly<{ children: React.Re
 
   return (
     <>
-      <div className="portfolio-stage" data-intro-playing={isPlaying || undefined} inert={isPlaying}>
+      <div className="portfolio-stage" inert={isPlaying}>
         {children}
       </div>
 
@@ -136,57 +135,42 @@ export default function AgenticIntro({ children }: Readonly<{ children: React.Re
             <path className="intro-route intro-route--green" d="M880 436 C810 410 790 335 706 320 S645 301 572 287" />
             <path className="intro-route intro-route--violet" d="M175 500 C261 449 266 385 355 337 S470 276 535 276" />
           </svg>
-          <div className="intro-topline">
-            <a className="intro-wordmark" href="#top" tabIndex={-1} aria-hidden="true">
-              SP<span>.</span>
-            </a>
-            <p className="intro-session">
-              <span className="intro-live-dot" />
-              LIVE BUILD <span className="intro-session-divider">/</span> SESSION 001
-            </p>
-            <span className="intro-agent-count">07 AGENTS ONLINE</span>
-          </div>
+
+          <header className="intro-topline">
+            <a className="intro-wordmark" href="#top" tabIndex={-1} aria-hidden="true">SP<span>.</span></a>
+            <nav className="intro-nav" aria-hidden="true">
+              <span>WORK</span><span>ABOUT</span><span>CONTACT <i>↗</i></span>
+            </nav>
+            <p className="intro-session"><span /> BUILDING LIVE</p>
+          </header>
 
           <div className="intro-canvas">
-            <div className="intro-canvas-heading">
-              <span>01 — COMPOSITION / PERSONAL PORTFOLIO</span>
-              <span className="intro-canvas-status"><span /> {stage}</span>
+            <p className="intro-oversized" aria-hidden="true">PORTFOLIO</p>
+            <div className="intro-portrait" aria-hidden="true">
+              <span className="intro-portrait-halo" />
+              <span className="intro-portrait-hair" />
+              <span className="intro-portrait-face" />
+              <span className="intro-portrait-neck" />
+              <span className="intro-portrait-jacket" />
+              <span className="intro-portrait-shirt" />
+              <span className="intro-portrait-seam" />
+              <span className="intro-portrait-note">INDEPENDENT BY NATURE.<br />DETAIL-ORIENTED BY DESIGN.</span>
             </div>
-
-            <div className="intro-browser">
-              <div className="intro-browser-chrome" aria-hidden="true">
-                <span /><span /><span />
-                <i>stefanpopa.design</i>
-                <b>···</b>
-              </div>
-              <div className="intro-webpage">
-                <div className="intro-page-nav" aria-hidden="true">
-                  <span className="intro-page-logo">SP<span>.</span></span>
-                  <span>WORK　 APPROACH　 CONTACT <b>↗</b></span>
-                </div>
-                <div className="intro-page-hero">
-                  <div className="intro-page-copy">
-                    <span className="intro-page-eyebrow"><i /> INDEPENDENT DEVELOPER · ROMANIA</span>
-                    <h1>MAKE IT<br /><span>MEAN SOMETHING.</span></h1>
-                    <span className="intro-page-description">
-                      Thoughtful ideas. Carefully made.<br />Built for the way we live today.
-                    </span>
-                    <span className="intro-page-cta">EXPLORE THE WORK <ArrowDownRight aria-hidden="true" size={13} /></span>
-                  </div>
-                  <div className="intro-page-art" aria-hidden="true">
-                    <span className="intro-page-sun" />
-                    <span className="intro-page-figure" />
-                    <span className="intro-page-art-label">CURIOSITY<br />IN, SOMETHING<br />USEFUL OUT.</span>
-                    <span className="intro-page-art-outline" />
-                  </div>
-                </div>
-                <div className="intro-page-work">
-                  <span>SELECTED WORK</span>
-                  <span className="intro-page-work-line" />
-                  <b><i>01</i> IDEAS, MADE REAL <ArrowUpRight aria-hidden="true" size={12} /></b>
-                  <b><i>02</i> THOUGHTFUL BY DESIGN <ArrowUpRight aria-hidden="true" size={12} /></b>
-                </div>
-              </div>
+            <div className="intro-profile">
+              <p className="intro-greeting">HELLO, I&apos;M <span>STEFAN</span></p>
+              <h1>STEFAN<br /><span>POPA.</span></h1>
+              <p className="intro-role">SOFTWARE DEVELOPER <i>&</i><br />DIGITAL BUILDER</p>
+              <p className="intro-description">
+                Thoughtful ideas. Carefully made.<br />Built for the way we live today.
+              </p>
+              <span className="intro-cta">LET&apos;S BUILD SOMETHING <ArrowUpRight aria-hidden="true" size={13} /></span>
+            </div>
+            <span className="intro-edge-note">INDEPENDENT DEVELOPER <i>↗</i></span>
+            <div className="intro-work-preview">
+              <span className="intro-preview-label">SELECTED WORK <i>↓</i></span>
+              <b><i>01</i> PARKSHARE <ArrowUpRight aria-hidden="true" size={11} /></b>
+              <b><i>02</i> AGENTIC PORTFOLIO <ArrowUpRight aria-hidden="true" size={11} /></b>
+              <b className="intro-preview-optional"><i>03</i> FIELDNOTES <ArrowUpRight aria-hidden="true" size={11} /></b>
             </div>
           </div>
 
@@ -213,19 +197,21 @@ export default function AgenticIntro({ children }: Readonly<{ children: React.Re
             );
           })}
 
-          <div className="intro-bottomline">
-            <div className="intro-build-info">
-              <span className="intro-build-dot" />
-              <span>DESIGN SYSTEM</span>
-              <i>·</i>
-              <span>INTERFACE</span>
-              <i>·</i>
-              <span>DETAIL</span>
+          <div className="intro-build-panel" aria-live="polite">
+            <div className="intro-build-caption">
+              <span>PORTFOLIO / DESIGN SESSION 001</span>
+              <span><i /> {stage}</span>
             </div>
-            <div className="intro-progress" aria-hidden="true"><span /></div>
-            <button className="intro-skip" onClick={skipIntro} ref={skipButton} type="button">
-              SKIP INTRO <ArrowUpRight aria-hidden="true" size={13} />
-            </button>
+            <div className="intro-build-progress" aria-hidden="true"><span /></div>
+            <div className="intro-build-footer">
+              <div className="intro-agents-label"><i /> 07 COLLABORATORS ONLINE</div>
+              <div className="intro-agent-swatches" aria-hidden="true">
+                {agents.map((agent) => <i key={agent.name} style={{ backgroundColor: agent.color }} />)}
+              </div>
+              <button className="intro-skip" onClick={skipIntro} ref={skipButton} type="button">
+                SKIP INTRO <ArrowUpRight aria-hidden="true" size={12} />
+              </button>
+            </div>
           </div>
         </div>
       )}

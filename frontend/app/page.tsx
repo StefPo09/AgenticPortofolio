@@ -3,212 +3,228 @@ import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 const projects = [
   {
     number: "01",
-    name: "Agentic Portfolio",
-    category: "Product design · Web",
+    name: "ParkShare",
+    type: "Mobility platform · Next.js",
     description:
-      "A personal corner of the internet for thoughtful experiments, useful tools, and work in progress.",
-    className: "project-art--portfolio",
-    mark: "MAKE\nIT MATTER",
+      "A thoughtful way to find, share, and manage parking. Bringing the whole experience together—from discovery to a better spot.",
+    tags: ["PRODUCT", "WEB APP", "NEXT.JS"],
+    color: "coral",
   },
   {
     number: "02",
-    name: "ParkShare",
-    category: "Mobility · Platform",
+    name: "Agentic Portfolio",
+    type: "Interactive experience · React",
     description:
-      "A simpler way for drivers to find a spot and make better use of the parking around them.",
-    className: "project-art--parkshare",
-    mark: "PARK\nTOGETHER",
+      "A portfolio that introduces itself by building itself. A collaborative, cursor-led experience made just for the web.",
+    tags: ["CREATIVE CODE", "MOTION", "REACT"],
+    color: "blue",
   },
   {
     number: "03",
     name: "Fieldnotes",
-    category: "Concept · Digital journal",
+    type: "Product concept · Digital journal",
     description:
-      "An unhurried place to collect small observations, save inspiration, and connect the dots.",
-    className: "project-art--fieldnotes",
-    mark: "NOTICE\nMORE",
+      "A deliberately simple space to collect small observations, useful links, and the ideas that connect them.",
+    tags: ["CONCEPT", "INTERFACE", "PROTOTYPE"],
+    color: "yellow",
   },
 ];
 
 const capabilities = [
   {
     number: "01",
-    title: "Product thinking",
-    description: "Turning the real problem into a clear, useful experience.",
-    tags: ["Discovery", "Prototyping", "Interaction"],
+    name: "Product & experience",
+    tags: ["Product thinking", "UX research", "Prototyping", "Interaction design"],
   },
   {
     number: "02",
-    title: "Interface design",
-    description: "Making digital products feel considered, distinct, and easy to use.",
-    tags: ["Visual systems", "Responsive UI", "Accessibility"],
+    name: "Interface & visual",
+    tags: ["Visual systems", "Responsive design", "Accessibility", "Motion"],
   },
   {
     number: "03",
-    title: "Frontend craft",
-    description: "Bringing ideas to life with fast, maintainable web experiences.",
-    tags: ["React", "Next.js", "TypeScript"],
+    name: "Engineering & delivery",
+    tags: ["React", "Next.js", "TypeScript", "APIs", "Shipping"],
   },
 ];
 
 export default function HomePage() {
   return (
-    <main className="portfolio">
-      <header className="site-header">
-        <a className="wordmark" href="#top" aria-label="Stefan Popa, back to top">
+    <main className="portfolio portfolio--reference">
+      <header className="site-header reference-header">
+        <a className="wordmark reference-wordmark" href="#top" aria-label="Stefan Popa, back to top">
           SP<span>.</span>
         </a>
-        <nav className="site-nav" aria-label="Main navigation">
-          <a href="#work">Work</a>
-          <a href="#approach">Approach</a>
-          <a className="nav-contact" href="#contact">
-            Let&apos;s talk <ArrowUpRight aria-hidden="true" size={14} />
-          </a>
+        <nav className="site-nav reference-nav" aria-label="Main navigation">
+          <a href="#work"><i>01</i> WORK</a>
+          <a href="#about"><i>02</i> ABOUT</a>
+          <a href="#contact"><i>03</i> CONTACT</a>
         </nav>
+        <a className="reference-availability" href="mailto:hello@yourname.dev">
+          <span /> AVAILABLE FOR SELECT PROJECTS
+        </a>
       </header>
 
-      <section className="hero section-wrap" id="top" aria-labelledby="hero-title">
-        <div className="hero-copy">
-          <p className="eyebrow"><span className="status-dot" /> Independent developer · Romania</p>
-          <h1 id="hero-title" tabIndex={-1}>
-            MAKE IT
-            <br />
-            <span>MEAN</span>
-            <br />
-            SOMETHING<span className="period">.</span>
-          </h1>
-          <div className="hero-bottom">
-            <p className="hero-intro">
-              I turn ambitious ideas into clear, useful digital experiences — from the first
-              sketch to the final line of code.
-            </p>
-            <a className="round-link" href="#work" aria-label="Scroll to selected work">
-              <ArrowDownRight aria-hidden="true" size={22} />
-            </a>
-          </div>
+      <section className="reference-hero" id="top" aria-labelledby="hero-title">
+        <p className="hero-oversized" aria-hidden="true">PORTFOLIO</p>
+        <div className="hero-portrait" role="img" aria-label="Abstract portrait illustration">
+          <span className="portrait-halo" />
+          <span className="portrait-hair" />
+          <span className="portrait-face" />
+          <span className="portrait-neck" />
+          <span className="portrait-jacket" />
+          <span className="portrait-shirt" />
+          <span className="portrait-seam" />
+          <span className="portrait-caption">INDEPENDENT BY NATURE.<br />DETAIL-ORIENTED BY DESIGN.</span>
         </div>
-
-        <div className="hero-art" role="img" aria-label="Abstract orange and cream portrait illustration">
-          <div className="art-orbit art-orbit--one" />
-          <div className="art-orbit art-orbit--two" />
-          <div className="art-sun" />
-          <div className="art-figure">
-            <div className="art-head" />
-            <div className="art-neck" />
-            <div className="art-body" />
-          </div>
-          <span className="art-caption">CURIOSITY<br />IN, SOMETHING<br />USEFUL OUT.</span>
-          <span className="art-index">FIG. 01 — ALWAYS IN PROGRESS</span>
+        <div className="hero-content">
+          <p className="hero-greeting">HELLO, I&apos;M <span>STEFAN</span></p>
+          <h1 id="hero-title" tabIndex={-1}>STEFAN<br /><span>POPA.</span></h1>
+          <p className="hero-role">SOFTWARE DEVELOPER <span>&</span> DIGITAL BUILDER</p>
+          <p className="hero-intro">
+            I design and build digital experiences that feel simple, work hard, and make people
+            want to stay a little longer.
+          </p>
+          <a className="hero-cta" href="#work">
+            EXPLORE MY WORK <ArrowDownRight aria-hidden="true" size={15} />
+          </a>
+          <p className="hero-location"><span /> BASED IN ROMANIA <i>·</i> WORKING EVERYWHERE</p>
         </div>
-        <div className="hero-stamp" aria-hidden="true">
-          <span>THOUGHTFUL</span>
-          <span>BY DESIGN</span>
-          <span>↘</span>
-        </div>
+        <span className="hero-side-note">INDEPENDENT DEVELOPER <i>↗</i></span>
+        <a className="hero-scroll" href="#work" aria-label="Scroll to selected work">
+          <span>SCROLL TO EXPLORE</span><ArrowDownRight aria-hidden="true" size={15} />
+        </a>
+        <div className="hero-coordinate">45° 56&apos; 49.2&quot; N &nbsp; 24° 58&apos; 14.4&quot; E</div>
       </section>
 
-      <div className="ticker" aria-label="A little less ordinary, a little more useful">
-        <div className="ticker-track" aria-hidden="true">
+      <div className="reference-ticker" aria-label="Independent thinking, intentional making">
+        <div className="reference-ticker-track" aria-hidden="true">
           {Array.from({ length: 4 }, (_, index) => (
-            <span key={index}>A LITTLE LESS ORDINARY <b>✳</b> A LITTLE MORE USEFUL <b>✳</b></span>
+            <span key={index}>INDEPENDENT THINKING <b>✳</b> INTENTIONAL MAKING <b>✳</b> BUILT TO BE USEFUL <b>✳</b></span>
           ))}
         </div>
       </div>
 
-      <section className="work-section section-wrap" id="work" aria-labelledby="work-title">
-        <div className="section-heading">
+      <section className="reference-work section-wrap" id="work" aria-labelledby="work-title">
+        <div className="reference-section-head">
           <div>
-            <p className="eyebrow">01 / Selected work</p>
-            <h2 id="work-title">GOOD IDEAS.<br /><span>MADE REAL.</span></h2>
+            <p className="reference-kicker"><span>01</span> SELECTED WORK</p>
+            <h2 id="work-title">WORK THAT<br /><span>SHIPS.</span></h2>
           </div>
-          <p className="section-note">
-            A few directions I like to explore: useful products, playful systems, and details
-            that make the whole thing feel right.
+          <p className="reference-section-intro">
+            A few things I&apos;ve been busy making. Different problems, same belief: the details
+            are the experience.
           </p>
         </div>
 
-        <div className="project-grid">
+        <div className="reference-project-list">
           {projects.map((project) => (
-            <article className="project-card" key={project.number}>
-              <div className={`project-art ${project.className}`}>
-                <span className="project-art-index">{project.number} / 03</span>
-                <span className="project-art-mark">{project.mark.split("\n").map((line) => <span key={line}>{line}</span>)}</span>
-                <span className="project-art-orbit" aria-hidden="true" />
-                <span className="project-art-caption">A SMALL IDEA, WITH ROOM TO GROW.</span>
-                <a className="project-open" href="#contact" aria-label={`Ask about ${project.name}`}>
-                  <ArrowUpRight aria-hidden="true" size={20} />
-                </a>
+            <article className={`reference-project reference-project--${project.color}`} key={project.number}>
+              <span className="reference-project-number">{project.number}<i> / 03</i></span>
+              <div className="reference-project-main">
+                <p className="reference-project-type">{project.type}</p>
+                <h3>{project.name}<ArrowUpRight aria-hidden="true" size={19} /></h3>
+                <p className="reference-project-description">{project.description}</p>
+                <ul className="reference-project-tags" aria-label={`${project.name} categories`}>
+                  {project.tags.map((tag) => <li key={tag}>{tag}</li>)}
+                </ul>
               </div>
-              <div className="project-meta">
-                <div>
-                  <p className="project-category">{project.category}</p>
-                  <h3>{project.name}</h3>
-                </div>
-                <span className="project-number">{project.number}</span>
+              <div className="reference-project-art" aria-hidden="true">
+                <span className="project-art-glow" />
+                <span className="project-art-grid" />
+                <span className="project-art-label">{project.number}<i> — FEATURED PROJECT</i></span>
+                <span className="project-art-title">
+                  {project.name === "ParkShare" ? <>PARK<span> / </span>SHARE</> : project.name === "Agentic Portfolio" ? <>IDEAS<br /><span>INTO</span><br />REALITY.</> : <>NOTICE<br /><span>THE</span><br />DETAILS.</>}
+                </span>
+                <span className="project-art-stamp">THOUGHTFULLY<br />MADE<br /><b>↗</b></span>
               </div>
-              <p className="project-description">{project.description}</p>
+            </article>
+          ))}
+        </div>
+        <div className="reference-work-footer">
+          <span><i /> A FEW THINGS MADE WITH INTENTION.</span>
+          <a href="https://github.com/StefPo09" target="_blank" rel="noreferrer">
+            ALL PROJECTS ON GITHUB <ArrowUpRight aria-hidden="true" size={13} />
+          </a>
+        </div>
+      </section>
+
+      <section className="reference-statement" aria-labelledby="statement-title">
+        <div className="section-wrap">
+          <p className="reference-kicker"><span>02</span> A LITTLE ABOUT HOW I WORK</p>
+          <div className="reference-statement-grid">
+            <h2 id="statement-title">BUILD IT.<br /><span>MEAN IT.</span></h2>
+            <div className="reference-statement-copy">
+              <p>
+                Good software should be more than working code. It should make a difficult thing
+                feel easy, an ordinary moment feel considered, and an ambitious idea feel
+                possible.
+              </p>
+              <p>
+                I bring product thinking, a feel for design, and the engineering to get it
+                shipped—without losing sight of the people on the other side of the screen.
+              </p>
+              <a className="reference-inline-link" href="https://github.com/StefPo09" target="_blank" rel="noreferrer">
+                FIND ME ON GITHUB <ArrowUpRight aria-hidden="true" size={15} />
+              </a>
+            </div>
+          </div>
+          <div className="reference-stats">
+            <div><strong>03</strong><span>WAYS TO MAKE IT BETTER</span></div>
+            <div><strong>01</strong><span>TEAM OF ONE. ALWAYS COLLABORATIVE.</span></div>
+            <div><strong>∞</strong><span>THINGS LEFT TO BUILD</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="reference-capabilities section-wrap" id="about" aria-labelledby="capabilities-title">
+        <div className="reference-section-head">
+          <div>
+            <p className="reference-kicker"><span>03</span> GOOD WORK, FULL CIRCLE</p>
+            <h2 id="capabilities-title">NOT JUST CODE<br /><span>THAT SHIPS.</span></h2>
+          </div>
+          <p className="reference-section-intro">
+            From the first awkward question to the final, tiny detail: the whole process matters.
+          </p>
+        </div>
+        <div className="reference-capability-list">
+          {capabilities.map((capability) => (
+            <article className="reference-capability" key={capability.number}>
+              <span className="reference-capability-number">{capability.number}</span>
+              <h3>{capability.name}</h3>
+              <ul>{capability.tags.map((tag) => <li key={tag}>{tag}</li>)}</ul>
+              <ArrowUpRight aria-hidden="true" size={18} />
             </article>
           ))}
         </div>
       </section>
 
-      <section className="approach-section" id="approach" aria-labelledby="approach-title">
-        <div className="section-wrap approach-inner">
-          <div className="approach-intro">
-            <p className="eyebrow">02 / What I bring</p>
-            <h2 id="approach-title">THINK IT<br />THROUGH.<br /><span>MAKE IT<br />MATTER.</span></h2>
-            <p>
-              Good work happens where curiosity meets craft. I like getting close to the problem,
-              keeping the process open, and making every decision earn its place.
-            </p>
-            <a className="text-link" href="https://github.com/StefPo09" target="_blank" rel="noreferrer">
-              More on GitHub <ArrowUpRight aria-hidden="true" size={16} />
-            </a>
+      <section className="reference-contact" id="contact" aria-labelledby="contact-title">
+        <div className="section-wrap reference-contact-inner">
+          <p className="reference-kicker"><span>04</span> ONE THING LEFT</p>
+          <div className="reference-contact-grid">
+            <h2 id="contact-title">LET&apos;S WORK<br /><span>TOGETHER.</span></h2>
+            <div className="reference-contact-copy">
+              <p>
+                Have a good idea, a not-quite-solved problem, or something you just wish worked
+                better? I&apos;d like to hear about it.
+              </p>
+              <a className="hero-cta" href="mailto:hello@yourname.dev">
+                START A CONVERSATION <ArrowUpRight aria-hidden="true" size={15} />
+              </a>
+            </div>
           </div>
-          <div className="capability-list">
-            {capabilities.map((capability) => (
-              <article className="capability" key={capability.number}>
-                <span className="capability-number">{capability.number}</span>
-                <div className="capability-content">
-                  <h3>{capability.title}</h3>
-                  <p>{capability.description}</p>
-                  <ul aria-label={`${capability.title} specialties`}>
-                    {capability.tags.map((tag) => <li key={tag}>{tag}</li>)}
-                  </ul>
-                </div>
-                <ArrowUpRight aria-hidden="true" className="capability-arrow" size={18} />
-              </article>
-            ))}
-            <p className="capability-footnote">SMALL TEAMS, OPEN MINDS, GOOD QUESTIONS.</p>
+          <div className="reference-contact-footer">
+            <span><i /> OPEN TO MEANINGFUL PROJECTS</span>
+            <span>BASED IN ROMANIA · WORKING WORLDWIDE</span>
+            <a href="#top">BACK TO THE TOP ↑</a>
           </div>
         </div>
       </section>
 
-      <section className="contact-section section-wrap" id="contact" aria-labelledby="contact-title">
-        <p className="eyebrow">03 / Your turn</p>
-        <div className="contact-layout">
-          <h2 id="contact-title">GOT A GOOD<br /><span>ONE?</span></h2>
-          <div className="contact-aside">
-            <p>
-              Have a rough idea, a tricky problem, or a project that needs a thoughtful pair of
-              hands? Let&apos;s make a start.
-            </p>
-            <a className="contact-button" href="mailto:hello@yourname.dev">
-              Say hello <ArrowUpRight aria-hidden="true" size={19} />
-            </a>
-          </div>
-        </div>
-        <div className="contact-bottom">
-          <span>OPEN TO GOOD COLLABORATIONS</span>
-          <a href="#top">BACK TO THE TOP ↑</a>
-        </div>
-      </section>
-
-      <footer className="site-footer section-wrap">
-        <a className="wordmark" href="#top" aria-label="Stefan Popa, back to top">
-          SP<span>.</span>
-        </a>
-        <p>Made with curiosity, in Romania.</p>
+      <footer className="site-footer section-wrap reference-footer">
+        <a className="wordmark reference-wordmark" href="#top" aria-label="Stefan Popa, back to top">SP<span>.</span></a>
+        <p>INDEPENDENT BY NATURE. DETAIL-ORIENTED BY DESIGN.</p>
         <span>© {new Date().getFullYear()} STEFAN POPA</span>
       </footer>
     </main>

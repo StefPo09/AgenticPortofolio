@@ -16,9 +16,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>
-        <AgenticIntro>{children}</AgenticIntro>
-      </body>
+      <body><AgenticIntro>{children}</AgenticIntro></body>
     </html>
   );
 }
