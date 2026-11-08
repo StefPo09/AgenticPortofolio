@@ -1,218 +1,383 @@
 "use client";
 
-import { ArrowDownRight, ArrowUpRight, MousePointer2 } from "lucide-react";
+import { ArrowUpRight, Bot, MousePointer2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import {
+  AGENTS,
+  BUILD_END,
+  FINISH_DURATION,
+  REDUCED_DURATION,
+  SECTION_LABELS,
+  SECTION_WINDOWS,
+  buildCursorKeys,
+  cameraTarget,
+  clamp,
+  cursorPlacement,
+  easeOutCubic,
+  planSteps,
+  type Step,
+} from "./liveBuild";
 
-const INTRO_DURATION = 8600;
-const EXIT_DURATION = 700;
+const LEAVE_MS = 450;
+const MAX_BOXES = 10;
+const VERBS: Record<string, string> = { text: "typing", block: "composing", art: "painting", nav: "linking" };
 
-const agents = [
-  { name: "design", color: "#f15a35", startX: "12vw", startY: "42vh", endX: "31vw", endY: "37vh", delay: "0ms" },
-  { name: "layout", color: "#55a8ff", startX: "82vw", startY: "20vh", endX: "69vw", endY: "31vh", delay: "250ms" },
-  { name: "type", color: "#ab83ff", startX: "21vw", startY: "76vh", endX: "48vw", endY: "43vh", delay: "510ms" },
-  { name: "motion", color: "#42d5a1", startX: "88vw", startY: "67vh", endX: "76vw", endY: "53vh", delay: "180ms" },
-  { name: "studio", color: "#ffd166", startX: "57vw", startY: "16vh", endX: "59vw", endY: "58vh", delay: "730ms" },
-  { name: "build", color: "#63d8df", startX: "8vw", startY: "27vh", endX: "39vw", endY: "56vh", delay: "390ms" },
-  { name: "detail", color: "#f185bc", startX: "71vw", startY: "81vh", endX: "62vw", endY: "45vh", delay: "620ms" },
-];
-
-const stages = [
-  { time: 500, label: "Mapping the canvas" },
-  { time: 2100, label: "Building the hero" },
-  { time: 3900, label: "Setting the type" },
-  { time: 5700, label: "Adding the details" },
-  { time: 7900, label: "Ready when you are" },
-];
-
-type AgentStyle = React.CSSProperties & {
-  "--agent-color": string;
-  "--agent-start-x": string;
-  "--agent-start-y": string;
-  "--agent-end-x": string;
-  "--agent-end-y": string;
-  "--agent-delay": string;
-};
-
+/**
+ * Builds the real page in front of the visitor.
+ *
+ * The page (`children`) is rendered normally, but while the intro runs every element marked with
+ * `data-build` is hidden by CSS and revealed by this engine, in order, while agent cursors travel
+ * to it, outline it with a wireframe, and the camera scrolls to follow. When the build finishes
+ * (or is skipped) the hidden state is removed and the finished, interactive site remains.
+ */
 export default function AgenticIntro({ children }: Readonly<{ children: React.ReactNode }>) {
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isLeaving, setIsLeaving] = useState(false);
-  const [stage, setStage] = useState(stages[0].label);
+  const [playing, setPlaying] = useState(true);
+  const [leaving, setLeaving] = useState(false);
   const [runId, setRunId] = useState(0);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const skipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const skipButton = useRef<HTMLButtonElement>(null);
 
+  const layerRef = useRef<HTMLDivElement>(null);
+  const loaderRef = useRef<HTMLDivElement>(null);
+  const skipRef = useRef<HTMLButtonElement>(null);
+  const stageRef = useRef<HTMLSpanElement>(null);
+  const pctRef = useRef<HTMLSpanElement>(null);
+  const barRef = useRef<HTMLElement>(null);
+  const statusRef = useRef<HTMLParagraphElement>(null);
+  const cursorRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const boxRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const finishRef = useRef<(immediate: boolean) => void>(() => {});
+  const previousFocus = useRef<Element | null>(null);
+
+  // Replay when the browser restores this page from the back/forward cache.
   useEffect(() => {
-    const clearTimers = () => {
-      timers.current.forEach(clearTimeout);
-      timers.current = [];
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      setLeaving(false);
+      setPlaying(true);
+      setRunId((id) => id + 1);
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
+
+  // When the intro has been removed (and `inert` lifted by this render), hand focus back to the
+  // page: the element that had it before, otherwise the main heading. Then honour a URL hash.
+  const wasPlaying = useRef(true);
+  useEffect(() => {
+    if (playing) {
+      wasPlaying.current = true;
+      return;
+    }
+    if (!wasPlaying.current) return;
+    wasPlaying.current = false;
+    const before = previousFocus.current;
+    const target = before instanceof HTMLElement && before.isConnected ? before : document.getElementById("hero-title");
+    target?.focus({ preventScroll: true });
+    const hash = window.location.hash.slice(1);
+    if (hash) document.getElementById(hash)?.scrollIntoView({ behavior: "instant" });
+  }, [playing]);
+
+  // The intro engine: one run per `runId`.
+  useEffect(() => {
+    const layer = layerRef.current;
+    if (!layer) return;
+
+    const root = document.documentElement;
+    const body = document.body;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const saved = { root: root.style.overflow, body: body.style.overflow };
+    previousFocus.current = document.activeElement && document.activeElement !== body ? document.activeElement : null;
+
+    let raf = 0;
+    let cancelled = false;
+    let finished = false;
+    let leaveTimer: ReturnType<typeof setTimeout> | undefined;
+
+    Reflect.set(window, "__introReady", true);
+    root.setAttribute("data-intro", "on");
+    root.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    skipRef.current?.focus({ preventScroll: true });
+
+    const elements = Array.from(document.querySelectorAll<HTMLElement>("[data-build]"));
+    let steps: Step[] = [];
+
+    const clearBuildState = () => {
+      for (const el of elements) el.style.removeProperty("--p");
+      root.removeAttribute("data-intro");
     };
 
-    const startIntro = () => {
-      clearTimers();
-      if (skipTimer.current) clearTimeout(skipTimer.current);
-      setRunId((current) => current + 1);
-      setIsPlaying(true);
-      setIsLeaving(false);
-      setStage(stages[0].label);
+    const finish = (immediate: boolean) => {
+      if (finished) return;
+      finished = true;
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      document.removeEventListener("keydown", onKeyDown);
+      clearBuildState();
+      root.style.overflow = saved.root;
+      body.style.overflow = saved.body;
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      setLeaving(true);
+      leaveTimer = setTimeout(() => setPlaying(false), immediate ? 200 : LEAVE_MS);
+    };
+    finishRef.current = finish;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        finish(true);
+      } else if (event.key === "Tab") {
+        event.preventDefault();
+        skipRef.current?.focus({ preventScroll: true });
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+
+    const start = async () => {
+      try {
+        if (!reduced) await Promise.race([document.fonts?.ready, new Promise((resolve) => setTimeout(resolve, 1500))]);
+      } catch {
+        /* fonts API unavailable: measure anyway */
+      }
+      if (cancelled) return;
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
 
-      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const duration = reducedMotion ? 1500 : INTRO_DURATION;
+      steps = planSteps(elements);
 
-      if (reducedMotion) {
-        timers.current.push(setTimeout(() => setStage(stages[stages.length - 1].label), 700));
-      } else {
-        for (const step of stages.slice(1)) {
-          timers.current.push(setTimeout(() => setStage(step.label), step.time));
+      if (reduced) {
+        const order = Object.keys(SECTION_WINDOWS);
+        for (const step of steps) {
+          const index = Math.max(0, order.indexOf(step.section));
+          step.start = 0.1 + index * 0.2;
+          step.end = step.start + 0.45;
         }
       }
 
-      timers.current.push(setTimeout(() => setIsLeaving(true), duration));
-      timers.current.push(setTimeout(() => setIsPlaying(false), duration + EXIT_DURATION));
-    };
+      const keys = reduced ? [] : buildCursorKeys(steps);
+      const exitAt = BUILD_END + 0.2;
+      const total = reduced ? REDUCED_DURATION : BUILD_END + FINISH_DURATION;
+      const boxFor = new Map<Step, number>();
+      const last: { x: number; y: number }[] = AGENTS.map(() => ({ x: 0, y: 0 }));
+      let scroll = 0;
+      let t = 0;
+      let previous = performance.now();
+      let lastLabel = "";
+      let lastPct = -1;
 
-    const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) startIntro();
-    };
+      const setText = (el: HTMLElement | null, text: string) => {
+        if (el && el.textContent !== text) el.textContent = text;
+      };
 
-    startIntro();
-    window.addEventListener("pageshow", handlePageShow);
+      const tick = (now: number) => {
+        if (cancelled) return;
+        // Clamp the time step so a backgrounded tab pauses the build instead of skipping it.
+        const dt = Math.min(0.25, (now - previous) / 1000);
+        previous = now;
+        t += dt;
+
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+
+        // --- camera ---------------------------------------------------------
+        if (!reduced) {
+          const maxScroll = Math.max(0, root.scrollHeight - vh);
+          const target = t >= BUILD_END ? 0 : cameraTarget(steps, t, vh, maxScroll);
+          scroll += (target - scroll) * (1 - Math.exp(-dt * (t >= BUILD_END ? 2.4 : 2.6)));
+          window.scrollTo({ top: scroll, left: 0, behavior: "instant" });
+        }
+        const scrollY = reduced ? 0 : scroll;
+
+        // --- reveal the real elements ----------------------------------------
+        let currentSection = "";
+        for (const step of steps) {
+          if (step.start <= t) currentSection = step.section;
+          if (step.shown === 1) continue;
+          if (t < step.start && step.shown === 0) continue;
+          const raw = clamp((t - step.start) / (step.end - step.start));
+          const eased = step.kind === "text" ? raw : easeOutCubic(raw);
+          if (step.shown < 0 || Math.abs(eased - step.shown) > 0.003 || eased === 1) {
+            step.el.style.setProperty("--p", eased.toFixed(3));
+            step.shown = eased;
+          }
+        }
+
+        if (!reduced) {
+          // --- blueprint tint + loader -----------------------------------------
+          const tint = easeOutCubic(clamp((t - 0.9) / 0.4)) * (1 - clamp((t - 2.2) / 0.8));
+          layer.style.setProperty("--tint", tint.toFixed(3));
+          if (loaderRef.current) loaderRef.current.dataset.on = t < 0.9 ? "true" : "false";
+
+          // --- wireframes ------------------------------------------------------
+          const active: Step[] = [];
+          for (const step of steps) {
+            if (t >= step.wire && t <= step.end + 0.35) active.push(step);
+          }
+          const visible = new Set(active.slice(-MAX_BOXES));
+          for (const [step, index] of boxFor) {
+            if (!visible.has(step)) {
+              boxFor.delete(step);
+              const stale = boxRefs.current[index];
+              if (stale) stale.style.opacity = "0";
+            }
+          }
+          const taken = new Set(boxFor.values());
+          for (const step of visible) {
+            let index = boxFor.get(step);
+            if (index === undefined) {
+              index = Array.from({ length: MAX_BOXES }, (_, i) => i).find((i) => !taken.has(i));
+              if (index === undefined) continue;
+              boxFor.set(step, index);
+              taken.add(index);
+            }
+            const box = boxRefs.current[index];
+            if (!box) continue;
+            const y = step.fixed ? step.rect.y : step.rect.y - scrollY;
+            const onScreen = y + step.rect.h > 0 && y < vh;
+            const fadeIn = clamp((t - step.wire) / 0.2);
+            const fadeOut = 1 - clamp((t - step.end) / 0.35);
+            box.style.opacity = onScreen ? String(fadeIn * fadeOut) : "0";
+            box.style.transform = `translate(${step.rect.x}px, ${y}px)`;
+            box.style.width = `${step.rect.w}px`;
+            box.style.height = `${step.rect.h}px`;
+            const verb = t < step.start ? "sizing" : t < step.end ? VERBS[step.kind] : "done";
+            setText(box.querySelector<HTMLElement>("[data-tag]"), `${AGENTS[step.agent].name} · ${verb}`);
+            setText(box.querySelector<HTMLElement>("[data-dim]"), `${Math.round(step.rect.w)} × ${Math.round(step.rect.h)}`);
+          }
+
+          // --- cursors ---------------------------------------------------------
+          AGENTS.forEach((_, index) => {
+            const el = cursorRefs.current[index];
+            if (!el) return;
+            const place = cursorPlacement(index, keys[index], t, scrollY, { w: vw, h: vh }, exitAt);
+            const speed = Math.hypot(place.x - last[index].x, place.y - last[index].y) / Math.max(dt, 0.001);
+            last[index] = { x: place.x, y: place.y };
+            el.dataset.on = place.visible ? "true" : "false";
+            el.style.transform = `translate3d(${place.x}px, ${place.y}px, 0)`;
+            el.style.setProperty("--blur", `${Math.min(2.2, speed / 900).toFixed(2)}px`);
+          });
+        }
+
+        // --- HUD -------------------------------------------------------------
+        const progress = clamp(t / (reduced ? REDUCED_DURATION : BUILD_END));
+        const pct = Math.round(progress * 100);
+        if (pct !== lastPct) {
+          lastPct = pct;
+          setText(pctRef.current, `${pct}%`);
+          if (barRef.current) barRef.current.style.transform = `scaleX(${progress.toFixed(3)})`;
+        }
+        const label =
+          t >= (reduced ? REDUCED_DURATION - 0.3 : BUILD_END) ? "Build complete" : (SECTION_LABELS[currentSection] ?? "Mapping the canvas");
+        if (label !== lastLabel) {
+          lastLabel = label;
+          setText(stageRef.current, label);
+          setText(statusRef.current, label);
+        }
+
+        if (t >= total) {
+          finish(false);
+          return;
+        }
+        raf = requestAnimationFrame(tick);
+      };
+
+      raf = requestAnimationFrame((now) => {
+        previous = now;
+        tick(now);
+      });
+    };
+    void start();
 
     return () => {
-      clearTimers();
-      if (skipTimer.current) clearTimeout(skipTimer.current);
-      window.removeEventListener("pageshow", handlePageShow);
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      if (leaveTimer) clearTimeout(leaveTimer);
+      document.removeEventListener("keydown", onKeyDown);
+      if (!finished) {
+        clearBuildState();
+        root.style.overflow = saved.root;
+        body.style.overflow = saved.body;
+      }
     };
-  }, []);
-
-  useEffect(() => {
-    if (!isPlaying) {
-      document.getElementById("hero-title")?.focus({ preventScroll: true });
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    skipButton.current?.focus({ preventScroll: true });
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isPlaying, runId]);
-
-  const skipIntro = () => {
-    setIsLeaving(true);
-    if (skipTimer.current) clearTimeout(skipTimer.current);
-    skipTimer.current = setTimeout(() => setIsPlaying(false), EXIT_DURATION);
-  };
+  }, [runId]);
 
   return (
     <>
-      <div className="portfolio-stage" inert={isPlaying}>
+      <div className="portfolio-stage" inert={playing}>
         {children}
       </div>
 
-      {isPlaying && (
+      {playing && (
         <div
-          aria-label="Portfolio introduction: animated agents are building the page"
+          aria-label="Portfolio introduction. Agents are building the page. Press Escape to skip."
           aria-modal="true"
-          className={`agent-intro${isLeaving ? " agent-intro--leaving" : ""}`}
+          className={`intro-layer${leaving ? " is-leaving" : ""}`}
           key={runId}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") skipIntro();
-            if (event.key === "Tab") {
-              event.preventDefault();
-              skipButton.current?.focus();
-            }
-          }}
+          ref={layerRef}
           role="dialog"
         >
-          <div className="intro-grid" aria-hidden="true" />
-          <svg className="intro-routes" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
-            <path className="intro-route intro-route--orange" d="M92 235 C190 235 220 310 325 286 S466 190 535 276" />
-            <path className="intro-route intro-route--blue" d="M892 145 C820 175 840 265 745 282 S620 328 572 287" />
-            <path className="intro-route intro-route--green" d="M880 436 C810 410 790 335 706 320 S645 301 572 287" />
-            <path className="intro-route intro-route--violet" d="M175 500 C261 449 266 385 355 337 S470 276 535 276" />
-          </svg>
+          <div className="intro-blocker" onMouseDown={(event) => event.preventDefault()} />
+          <div className="intro-tint" aria-hidden="true" />
 
-          <header className="intro-topline">
-            <a className="intro-wordmark" href="#top" tabIndex={-1} aria-hidden="true">SP<span>.</span></a>
-            <nav className="intro-nav" aria-hidden="true">
-              <span>WORK</span><span>ABOUT</span><span>CONTACT <i>↗</i></span>
-            </nav>
-            <p className="intro-session"><span /> BUILDING LIVE</p>
-          </header>
-
-          <div className="intro-canvas">
-            <p className="intro-oversized" aria-hidden="true">PORTFOLIO</p>
-            <div className="intro-portrait" aria-hidden="true">
-              <span className="intro-portrait-halo" />
-              <span className="intro-portrait-hair" />
-              <span className="intro-portrait-face" />
-              <span className="intro-portrait-neck" />
-              <span className="intro-portrait-jacket" />
-              <span className="intro-portrait-shirt" />
-              <span className="intro-portrait-seam" />
-              <span className="intro-portrait-note">INDEPENDENT BY NATURE.<br />DETAIL-ORIENTED BY DESIGN.</span>
-            </div>
-            <div className="intro-profile">
-              <p className="intro-greeting">HELLO, I&apos;M <span>STEFAN</span></p>
-              <h1>STEFAN<br /><span>POPA.</span></h1>
-              <p className="intro-role">SOFTWARE DEVELOPER <i>&</i><br />DIGITAL BUILDER</p>
-              <p className="intro-description">
-                Thoughtful ideas. Carefully made.<br />Built for the way we live today.
-              </p>
-              <span className="intro-cta">LET&apos;S BUILD SOMETHING <ArrowUpRight aria-hidden="true" size={13} /></span>
-            </div>
-            <span className="intro-edge-note">INDEPENDENT DEVELOPER <i>↗</i></span>
-            <div className="intro-work-preview">
-              <span className="intro-preview-label">SELECTED WORK <i>↓</i></span>
-              <b><i>01</i> PARKSHARE <ArrowUpRight aria-hidden="true" size={11} /></b>
-              <b><i>02</i> AGENTIC PORTFOLIO <ArrowUpRight aria-hidden="true" size={11} /></b>
-              <b className="intro-preview-optional"><i>03</i> FIELDNOTES <ArrowUpRight aria-hidden="true" size={11} /></b>
-            </div>
+          <div className="intro-loader" data-on="true" ref={loaderRef} aria-hidden="true">
+            <span className="intro-loader-ring">
+              {Array.from({ length: 12 }, (_, i) => (
+                <i key={i} style={{ ["--i" as string]: i, background: AGENTS[i % AGENTS.length].color }} />
+              ))}
+            </span>
+            <span className="intro-loader-mark">S</span>
           </div>
 
-          {agents.map((agent, index) => {
-            const style: AgentStyle = {
-              "--agent-color": agent.color,
-              "--agent-start-x": agent.startX,
-              "--agent-start-y": agent.startY,
-              "--agent-end-x": agent.endX,
-              "--agent-end-y": agent.endY,
-              "--agent-delay": agent.delay,
-            };
-
-            return (
-              <div
-                aria-hidden="true"
-                className={`intro-cursor${index > 4 ? " intro-cursor--optional" : ""}`}
-                key={agent.name}
-                style={style}
-              >
-                <MousePointer2 className="intro-cursor-pointer" fill="var(--agent-color)" size={17} strokeWidth={2} />
-                <span className="intro-cursor-tag">{agent.name}<span>·</span></span>
-              </div>
-            );
-          })}
-
-          <div className="intro-build-panel" aria-live="polite">
-            <div className="intro-build-caption">
-              <span>PORTFOLIO / DESIGN SESSION 001</span>
-              <span><i /> {stage}</span>
+          {Array.from({ length: MAX_BOXES }, (_, i) => (
+            <div
+              aria-hidden="true"
+              className="intro-box"
+              key={i}
+              ref={(el) => {
+                boxRefs.current[i] = el;
+              }}
+            >
+              <span className="intro-box-tag" data-tag />
+              <span className="intro-box-dim" data-dim />
+              <b /><b /><b /><b />
             </div>
-            <div className="intro-build-progress" aria-hidden="true"><span /></div>
-            <div className="intro-build-footer">
-              <div className="intro-agents-label"><i /> 07 COLLABORATORS ONLINE</div>
-              <div className="intro-agent-swatches" aria-hidden="true">
-                {agents.map((agent) => <i key={agent.name} style={{ backgroundColor: agent.color }} />)}
-              </div>
-              <button className="intro-skip" onClick={skipIntro} ref={skipButton} type="button">
-                SKIP INTRO <ArrowUpRight aria-hidden="true" size={12} />
+          ))}
+
+          {AGENTS.map((agent, i) => (
+            <div
+              aria-hidden="true"
+              className="intro-cursor"
+              data-on="false"
+              key={agent.id}
+              ref={(el) => {
+                cursorRefs.current[i] = el;
+              }}
+              style={{ ["--agent" as string]: agent.color }}
+            >
+              <MousePointer2 className="intro-cursor-arrow" fill={agent.color} size={18} strokeWidth={1.5} />
+              <span className="intro-cursor-tag">
+                <Bot aria-hidden="true" size={11} /> {agent.name}
+              </span>
+            </div>
+          ))}
+
+          <div className="intro-hud">
+            <div className="intro-hud-pill">
+              <span className="intro-hud-live">
+                <i /> AGENTS LIVE
+              </span>
+              <span className="intro-hud-count">{AGENTS.length} ONLINE</span>
+              <span className="intro-hud-stage" ref={stageRef}>Mapping the canvas</span>
+              <span className="intro-hud-pct" ref={pctRef}>0%</span>
+              <button className="intro-skip" onClick={() => finishRef.current(true)} ref={skipRef} type="button">
+                SKIP INTRO <ArrowUpRight aria-hidden="true" size={13} />
               </button>
+              <span className="intro-hud-bar" aria-hidden="true">
+                <i ref={barRef} />
+              </span>
             </div>
           </div>
+
+          <p className="sr-only" aria-live="polite" ref={statusRef} role="status" />
         </div>
       )}
     </>
